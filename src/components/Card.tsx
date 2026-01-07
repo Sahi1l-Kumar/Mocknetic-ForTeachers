@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from "react";
 
 interface CardProps {
   children: ReactNode;
@@ -7,9 +7,16 @@ interface CardProps {
   onClick?: () => void;
 }
 
-export default function Card({ children, className = '', hover = false, onClick }: CardProps) {
-  const hoverClass = hover ? 'hover:shadow-xl hover:-translate-y-1 cursor-pointer' : '';
-  const clickableClass = onClick ? 'cursor-pointer' : '';
+export default function Card({
+  children,
+  className = "",
+  hover = false,
+  onClick,
+}: CardProps) {
+  const hoverClass = hover
+    ? "hover:shadow-xl hover:-translate-y-1 cursor-pointer"
+    : "";
+  const clickableClass = onClick ? "cursor-pointer" : "";
 
   return (
     <div

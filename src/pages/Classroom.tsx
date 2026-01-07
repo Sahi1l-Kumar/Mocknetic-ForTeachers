@@ -79,8 +79,8 @@ export default function Classroom() {
   const { classId } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>("assessments");
-  const [assessments, setAssessments] = useState<Assessment[]>(mockAssessments);
-  const [quizzes, setQuizzes] = useState<Quiz[]>(mockQuizzes);
+  const [assessments] = useState<Assessment[]>(mockAssessments);
+  const [quizzes] = useState<Quiz[]>(mockQuizzes);
 
   const tabs = [
     {
