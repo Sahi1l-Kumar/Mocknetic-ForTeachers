@@ -1,18 +1,26 @@
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, FileText, Bell, HelpCircle, BookOpen } from 'lucide-react';
-import { useState } from 'react';
-import Card from '../../components/Card';
-import Button from '../../components/Button';
-import Modal from '../../components/Modal';
-import { mockClasses } from '../../data/mockData';
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  Plus,
+  FileText,
+  Bell,
+  HelpCircle,
+  BookOpen,
+} from "lucide-react";
+import { useState } from "react";
+import Card from "../components/Card";
+import Button from "../components/Button";
+import Modal from "../components/Modal";
+import { mockClasses } from "../data/mockData";
 
-type ContentType = 'assessment' | 'announcement' | 'quiz' | 'material';
+type ContentType = "assessment" | "announcement" | "quiz" | "material";
 
 export default function TeacherClassView() {
   const navigate = useNavigate();
   const { classId } = useParams();
   const [contentTypeModalOpen, setContentTypeModalOpen] = useState(false);
-  const [selectedContentType, setSelectedContentType] = useState<ContentType | null>(null);
+  const [selectedContentType, setSelectedContentType] =
+    useState<ContentType | null>(null);
 
   const currentClass = mockClasses.find((c) => c.id === classId);
 
@@ -22,39 +30,40 @@ export default function TeacherClassView() {
 
   const contentTypes = [
     {
-      type: 'assessment' as ContentType,
+      type: "assessment" as ContentType,
       icon: FileText,
-      label: 'Assessment',
-      description: 'Create a comprehensive assessment with multiple question types',
-      color: 'bg-blue-500',
+      label: "Assessment",
+      description:
+        "Create a comprehensive assessment with multiple question types",
+      color: "bg-blue-500",
     },
     {
-      type: 'announcement' as ContentType,
+      type: "announcement" as ContentType,
       icon: Bell,
-      label: 'Announcement',
-      description: 'Share important updates with your students',
-      color: 'bg-green-500',
+      label: "Announcement",
+      description: "Share important updates with your students",
+      color: "bg-green-500",
     },
     {
-      type: 'quiz' as ContentType,
+      type: "quiz" as ContentType,
       icon: HelpCircle,
-      label: 'Quiz',
-      description: 'Create a quick quiz to test student knowledge',
-      color: 'bg-purple-500',
+      label: "Quiz",
+      description: "Create a quick quiz to test student knowledge",
+      color: "bg-purple-500",
     },
     {
-      type: 'material' as ContentType,
+      type: "material" as ContentType,
       icon: BookOpen,
-      label: 'Material',
-      description: 'Upload course materials, documents, or links',
-      color: 'bg-orange-500',
+      label: "Material",
+      description: "Upload course materials, documents, or links",
+      color: "bg-orange-500",
     },
   ];
 
   const handleContentTypeSelect = (type: ContentType) => {
     setSelectedContentType(type);
     setContentTypeModalOpen(false);
-    if (type === 'assessment') {
+    if (type === "assessment") {
       navigate(`/teacher/class/${classId}/create-assessment`);
     }
   };
@@ -65,19 +74,21 @@ export default function TeacherClassView() {
         className="h-48 bg-gradient-to-r from-blue-800 to-blue-900 relative"
         style={{
           backgroundImage: `linear-gradient(rgba(30, 64, 175, 0.9), rgba(30, 64, 175, 0.9)), url(${currentClass.coverImage})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          backgroundSize: "cover",
+          backgroundPosition: "center",
         }}
       >
         <div className="absolute inset-0 flex flex-col justify-between p-6">
           <button
-            onClick={() => navigate('/teacher/dashboard')}
+            onClick={() => navigate("/teacher/dashboard")}
             className="self-start p-2 hover:bg-white/20 rounded-lg text-white transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">{currentClass.name}</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              {currentClass.name}
+            </h1>
             <p className="text-blue-100">Class Code: {currentClass.code}</p>
           </div>
         </div>
@@ -88,7 +99,9 @@ export default function TeacherClassView() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Class Workspace</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  Class Workspace
+                </h2>
                 <p className="text-gray-600">
                   Create and manage content for your students
                 </p>
@@ -109,7 +122,8 @@ export default function TeacherClassView() {
             Start Creating Content
           </h3>
           <p className="text-gray-600 max-w-md mx-auto mb-6">
-            Click the "Create Content" button above to add assessments, announcements, quizzes, or materials to your class
+            Click the "Create Content" button above to add assessments,
+            announcements, quizzes, or materials to your class
           </p>
           <Button onClick={() => setContentTypeModalOpen(true)} size="lg">
             <Plus className="w-5 h-5" />
@@ -133,7 +147,9 @@ export default function TeacherClassView() {
               className="p-6 cursor-pointer"
             >
               <div className="flex items-start gap-4">
-                <div className={`w-12 h-12 ${content.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                <div
+                  className={`w-12 h-12 ${content.color} rounded-lg flex items-center justify-center flex-shrink-0`}
+                >
                   <content.icon className="w-6 h-6 text-white" />
                 </div>
                 <div>
