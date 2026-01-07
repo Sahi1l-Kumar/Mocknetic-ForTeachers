@@ -1,210 +1,126 @@
-import { useState } from "react";
-import {
-  Plus,
-  Users,
-  FileText,
-  Copy,
-  Check,
-  BookOpen,
-  Calendar,
-  ArrowLeft,
-} from "lucide-react";
-import CreateClassroomModal from "../components/CreateClassroomModal";
-import ClassroomDetails from "../components/ClassroomDetails";
+import { useState } from 'react';
+import { Plus } from 'lucide-react';
+import Navbar from '../components/Navbar';
+import Sidebar from '../components/Sidebar';
+import ClassCard from '../components/ClassCard';
+import CreateClassroomModal from '../components/CreateClassroomModal';
+import Card from '../components/Card';
+import Button from '../components/Button';
 
 interface Classroom {
   id: string;
   name: string;
-  code: string;
+  section: string;
   subject: string;
   studentCount: number;
   assessmentCount: number;
-  createdAt: string;
+  quizCount: number;
+  code: string;
 }
 
-interface DashboardProps {
-  onBack: () => void;
-}
+const mockClassrooms: Classroom[] = [
+  {
+    id: '1',
+    name: 'Data Structures & Algorithms',
+    section: 'Section A',
+    subject: 'Computer Science',
+    studentCount: 28,
+    assessmentCount: 5,
+    quizCount: 3,
+    code: 'DSA101',
+  },
+  {
+    id: '2',
+    name: 'Web Development Fundamentals',
+    section: 'Section B',
+    subject: 'Web Development',
+    studentCount: 35,
+    assessmentCount: 7,
+    quizCount: 4,
+    code: 'WEB201',
+  },
+  {
+    id: '3',
+    name: 'Machine Learning Basics',
+    section: 'Section C',
+    subject: 'Artificial Intelligence',
+    studentCount: 22,
+    assessmentCount: 4,
+    quizCount: 2,
+    code: 'ML301',
+  },
+];
 
-function Dashboard({ onBack }: DashboardProps) {
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedClassroom, setSelectedClassroom] = useState<Classroom | null>(
-    null
-  );
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+export default function Dashboard() {
+  const [classrooms, setClassrooms] = useState<Classroom[]>(mockClassrooms);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  const [classrooms] = useState<Classroom[]>([
-    {
-      id: "1",
-      name: "Advanced Web Development",
-      code: "WEB-2024-A1",
-      subject: "Computer Science",
-      studentCount: 24,
-      assessmentCount: 8,
-      createdAt: "2024-01-15",
-    },
-    {
-      id: "2",
-      name: "Data Structures & Algorithms",
-      code: "DSA-2024-B2",
-      subject: "Computer Science",
-      studentCount: 32,
-      assessmentCount: 12,
-      createdAt: "2024-01-10",
-    },
-    {
-      id: "3",
-      name: "System Design Fundamentals",
-      code: "SYS-2024-C3",
-      subject: "Software Engineering",
-      studentCount: 18,
-      assessmentCount: 6,
-      createdAt: "2024-02-01",
-    },
-  ]);
-
-  const handleCopyCode = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2000);
+  const handleCreateClassroom = (data: { name: string; section: string; subject: string }) => {
+    const newClassroom: Classroom = {
+      id: String(classrooms.length + 1),
+      ...data,
+      studentCount: 0,
+      assessmentCount: 0,
+      quizCount: 0,
+      code: `${data.subject.toUpperCase().slice(0, 3)}${classrooms.length + 1}01`,
+    };
+    setClassrooms([...classrooms, newClassroom]);
+    setModalOpen(false);
   };
 
-  if (selectedClassroom) {
-    return (
-      <ClassroomDetails
-        classroom={selectedClassroom}
-        onBack={() => setSelectedClassroom(null)}
-      />
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="border-b border-slate-200 bg-white">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={onBack}
-              className="text-slate-600 hover:text-slate-900 transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">
-                Classroom Hub
-              </h1>
-              <p className="text-sm text-slate-600">Teacher View</p>
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <div className="flex">
+        <Sidebar />
+        <main className="flex-1 p-6 lg:p-8">
+          <div className="max-w-7xl">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h1 className="text-4xl font-bold text-gray-900">Your Classes</h1>
+                <p className="text-gray-600 mt-2">Manage your classrooms and assessments</p>
+              </div>
+              <Button onClick={() => setModalOpen(true)} size="lg">
+                <Plus className="w-5 h-5" />
+                Create Class
+              </Button>
             </div>
+
+            {classrooms.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {classrooms.map((classroom) => (
+                  <ClassCard
+                    key={classroom.id}
+                    id={classroom.id}
+                    name={classroom.name}
+                    section={classroom.section}
+                    subject={classroom.subject}
+                    studentCount={classroom.studentCount}
+                    assessmentCount={classroom.assessmentCount}
+                    quizCount={classroom.quizCount}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Card className="p-12 text-center">
+                <Plus className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">No classes yet</h2>
+                <p className="text-gray-600 mb-6">Create your first classroom to get started</p>
+                <Button onClick={() => setModalOpen(true)} size="lg">
+                  <Plus className="w-5 h-5" />
+                  Create Class
+                </Button>
+              </Card>
+            )}
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm flex items-center space-x-2"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Create Classroom</span>
-          </button>
-        </div>
-      </nav>
+        </main>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-6 py-12">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-slate-900 mb-2">
-            My Classrooms
-          </h2>
-          <p className="text-slate-600">
-            Manage your classes and create assessments
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {classrooms.map((classroom) => (
-            <div
-              key={classroom.id}
-              className="bg-white rounded-xl border-2 border-slate-200 hover:border-blue-400 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group cursor-pointer"
-              onClick={() => setSelectedClassroom(classroom)}
-            >
-              <div className="bg-linear-to-br from-blue-600 to-blue-700 p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
-                <div className="relative">
-                  <div className="flex items-center justify-between mb-4">
-                    <BookOpen className="w-8 h-8 text-white" />
-                    <span className="bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold">
-                      {classroom.subject}
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">
-                    {classroom.name}
-                  </h3>
-                </div>
-              </div>
-
-              <div className="p-6">
-                <div className="mb-4">
-                  <div className="flex items-center justify-between bg-slate-50 rounded-lg p-3 border border-slate-200">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-slate-600">
-                        Class Code:
-                      </span>
-                      <span className="font-mono font-bold text-slate-900">
-                        {classroom.code}
-                      </span>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopyCode(classroom.code);
-                      }}
-                      className="text-blue-600 hover:text-blue-700 transition-colors"
-                    >
-                      {copiedCode === classroom.code ? (
-                        <Check className="w-4 h-4" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <Users className="w-4 h-4 text-slate-600" />
-                      <span className="text-xs text-slate-600">Students</span>
-                    </div>
-                    <p className="text-2xl font-bold text-slate-900">
-                      {classroom.studentCount}
-                    </p>
-                  </div>
-                  <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <FileText className="w-4 h-4 text-slate-600" />
-                      <span className="text-xs text-slate-600">
-                        Assessments
-                      </span>
-                    </div>
-                    <p className="text-2xl font-bold text-slate-900">
-                      {classroom.assessmentCount}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2 text-sm text-slate-500">
-                  <Calendar className="w-4 h-4" />
-                  <span>
-                    Created {new Date(classroom.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </main>
-
-      {showCreateModal && (
-        <CreateClassroomModal onClose={() => setShowCreateModal(false)} />
-      )}
+      <CreateClassroomModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onCreate={handleCreateClassroom}
+      />
     </div>
   );
 }
-
-export default Dashboard;
