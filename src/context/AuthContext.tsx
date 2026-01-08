@@ -21,8 +21,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const login = async (email: string, password: string) => {
+  const login = async (email: string) => {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -45,8 +44,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const updatePassword = async (newPassword: string) => {
+  const updatePassword = async () => {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
     console.log("Password updated");
