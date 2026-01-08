@@ -1,353 +1,311 @@
 import { useState } from "react";
+import type { ChangeEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Upload, FileText, Trash2, Check } from "lucide-react";
-import Navbar from "../components/Navbar";
-import Card from "../components/Card";
-import Button from "../components/Button";
+import { Navbar } from "../components/Navbar";
+import { toast } from "sonner";
+import { ArrowLeft, FileText, Upload, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-interface UploadedFile {
-  id: string;
-  name: string;
-  size: string;
-}
-
-export default function CreateAssessment() {
-  const { classId } = useParams();
+const CreateAssessment = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    title: "",
-    topicName: "",
-    topicDescription: "",
-    evaluationCriteria: "",
-    numberOfQuestions: 10,
-    difficulty: "Medium" as "Easy" | "Medium" | "Hard",
-    questionTypes: {
-      mcq: true,
-      descriptive: true,
-      numerical: false,
-    },
-  });
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [descriptionMethod, setDescriptionMethod] = useState<"text" | "file">(
+    "text"
+  );
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [evaluationCriteria, setEvaluationCriteria] = useState("");
 
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [dragActive, setDragActive] = useState(false);
+  const [difficulty, setDifficulty] = useState("medium");
+  const [mcqCount, setMcqCount] = useState(10);
+  const [descriptiveCount, setDescriptiveCount] = useState(5);
+  const [numericalCount, setNumericalCount] = useState(5);
 
-  const handleInputChange = (
-    field: string,
-    value: string | number | boolean | Record<string, boolean>
-  ) => {
-    setFormData({ ...formData, [field]: value });
-  };
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleFileUpload = (files: FileList) => {
-    const newFiles = Array.from(files).map((file) => ({
-      id: Math.random().toString(36),
-      name: file.name,
-      size: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
-    }));
-    setUploadedFiles([...uploadedFiles, ...newFiles]);
-  };
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const validTypes = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ];
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
+      if (validTypes.includes(file.type)) {
+        setSelectedFile(file);
+      } else {
+        toast.error("Invalid file type", {
+          description: "Please upload a PDF or Word document",
+        });
+      }
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileUpload(e.dataTransfer.files);
+  const handleSubmit = async () => {
+    if (!title.trim()) {
+      toast.error("Error", {
+        description: "Please enter an assessment title",
+      });
+      return;
     }
-  };
 
-  const removeFile = (id: string) => {
-    setUploadedFiles(uploadedFiles.filter((f) => f.id !== id));
-  };
+    if (descriptionMethod === "text" && !description.trim()) {
+      toast.error("Error", {
+        description: "Please enter a description",
+      });
+      return;
+    }
 
-  const handleGenerateQuestions = () => {
-    navigate(`/classes/${classId}`);
-  };
+    if (descriptionMethod === "file" && !selectedFile) {
+      toast.error("Error", {
+        description: "Please upload a description file",
+      });
+      return;
+    }
 
-  const handleSaveDraft = () => {
-    navigate(`/classes/${classId}`);
+    setIsSubmitting(true);
+
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    toast.success("Success!", {
+      description: "Assessment created successfully",
+    });
+
+    setIsSubmitting(false);
+    navigate(`/classroom/${id}`);
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <div className="flex">
-        <main className="flex-1 p-6 lg:p-8">
-          <div className="max-w-4xl">
-            <button
-              onClick={() => navigate(`/classes/${classId}`)}
-              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium mb-6"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Back to Classroom
-            </button>
 
-            <div className="mb-8">
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                Create Assessment
-              </h1>
-              <p className="text-gray-600">
-                Design a comprehensive assessment for your students
-              </p>
-            </div>
+      <main className="container mx-auto px-4 py-8 max-w-4xl">
+        <Button
+          variant="ghost"
+          className="mb-4"
+          onClick={() => navigate(`/classroom/${id}`)}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Classroom
+        </Button>
 
-            <div className="space-y-6">
-              <Card className="p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  1. Assessment Title
-                </h2>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => handleInputChange("title", e.target.value)}
-                  placeholder="e.g., Advanced Problem Solving Techniques"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Create New Assessment
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Design a comprehensive assessment for your students
+          </p>
+        </div>
+
+        <div className="space-y-6">
+          {/* Basic Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Basic Information</CardTitle>
+              <CardDescription>
+                Provide the assessment title and description
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">Assessment Title</Label>
+                <Input
+                  id="title"
+                  placeholder="e.g., Mid-term Exam"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
                 />
-              </Card>
-
-              <Card className="p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  2. Topic Name
-                </h2>
-                <input
-                  type="text"
-                  value={formData.topicName}
-                  onChange={(e) =>
-                    handleInputChange("topicName", e.target.value)
-                  }
-                  placeholder="e.g., Dynamic Programming Patterns"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
-                />
-              </Card>
-
-              <Card className="p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  3. Topic Description
-                </h2>
-                <textarea
-                  value={formData.topicDescription}
-                  onChange={(e) =>
-                    handleInputChange("topicDescription", e.target.value)
-                  }
-                  placeholder="Provide a brief description of the topic/lesson..."
-                  rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                />
-              </Card>
-
-              <Card className="p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  4. Upload Teaching Materials
-                </h2>
-                <p className="text-gray-600 text-sm mb-4">
-                  Upload PDFs, presentations, documents, or lesson plans that
-                  will be used for evaluation
-                </p>
-
-                <div
-                  onDragEnter={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDragOver={handleDrag}
-                  onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                    dragActive
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-300 hover:border-gray-400"
-                  }`}
-                >
-                  <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-700 font-medium mb-1">
-                    Drag and drop files here
-                  </p>
-                  <p className="text-sm text-gray-600 mb-4">or</p>
-                  <label className="inline-block">
-                    <input
-                      type="file"
-                      multiple
-                      onChange={(e) =>
-                        e.target.files && handleFileUpload(e.target.files)
-                      }
-                      className="hidden"
-                      accept=".pdf,.ppt,.pptx,.doc,.docx"
-                    />
-                    <Button variant="outline" size="sm" as="span">
-                      Browse Files
-                    </Button>
-                  </label>
-                  <p className="text-xs text-gray-500 mt-3">
-                    PDF, PPT, PPTX, DOC, DOCX up to 25MB each
-                  </p>
-                </div>
-
-                {uploadedFiles.length > 0 && (
-                  <div className="mt-6">
-                    <h3 className="font-medium text-gray-900 mb-3">
-                      Uploaded Files ({uploadedFiles.length})
-                    </h3>
-                    <div className="space-y-2">
-                      {uploadedFiles.map((file) => (
-                        <div
-                          key={file.id}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                        >
-                          <div className="flex items-center gap-3">
-                            <FileText className="w-5 h-5 text-blue-600" />
-                            <div className="text-left">
-                              <p className="text-sm font-medium text-gray-900">
-                                {file.name}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {file.size}
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => removeFile(file.id)}
-                            className="p-1 hover:bg-gray-200 rounded-lg transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-600" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </Card>
-
-              <Card className="p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  5. Evaluation Criteria
-                </h2>
-                <textarea
-                  value={formData.evaluationCriteria}
-                  onChange={(e) =>
-                    handleInputChange("evaluationCriteria", e.target.value)
-                  }
-                  placeholder="Enter keywords or rubrics that the AI should use while evaluating answers (e.g., time complexity, edge cases, code readability)."
-                  rows={5}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                />
-              </Card>
-
-              <Card className="p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  6. Question Configuration
-                </h2>
-
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Number of Questions
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={formData.numberOfQuestions}
-                      onChange={(e) =>
-                        handleInputChange(
-                          "numberOfQuestions",
-                          parseInt(e.target.value)
-                        )
-                      }
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Difficulty Level
-                    </label>
-                    <div className="flex gap-3">
-                      {["Easy", "Medium", "Hard"].map((level) => (
-                        <button
-                          key={level}
-                          onClick={() => handleInputChange("difficulty", level)}
-                          className={`px-6 py-2 rounded-lg font-medium transition-all ${
-                            formData.difficulty === level
-                              ? "bg-blue-600 text-white shadow-md"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }`}
-                        >
-                          {level}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Question Types
-                    </label>
-                    <div className="space-y-3">
-                      {[
-                        {
-                          key: "mcq",
-                          label: "Multiple Choice Questions (MCQ)",
-                        },
-                        { key: "descriptive", label: "Descriptive Questions" },
-                        { key: "numerical", label: "Numerical Questions" },
-                      ].map(({ key, label }) => (
-                        <label
-                          key={key}
-                          className="flex items-center gap-3 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={
-                              formData.questionTypes[
-                                key as keyof typeof formData.questionTypes
-                              ]
-                            }
-                            onChange={(e) => {
-                              setFormData({
-                                ...formData,
-                                questionTypes: {
-                                  ...formData.questionTypes,
-                                  [key]: e.target.checked,
-                                },
-                              });
-                            }}
-                            className="w-5 h-5 text-blue-600 rounded"
-                          />
-                          <span className="text-gray-700 font-medium">
-                            {label}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </Card>
-
-              <div className="flex gap-4 pt-4">
-                <Button variant="secondary" onClick={handleSaveDraft} fullWidth>
-                  Save as Draft
-                </Button>
-                <Button
-                  onClick={handleGenerateQuestions}
-                  fullWidth
-                  disabled={!formData.title || !formData.topicName}
-                >
-                  <Check className="w-5 h-5" />
-                  Generate Questions
-                </Button>
               </div>
-            </div>
+
+              <Tabs
+                value={descriptionMethod}
+                onValueChange={(v) =>
+                  setDescriptionMethod(v as "text" | "file")
+                }
+              >
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="text">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Text Editor
+                  </TabsTrigger>
+                  <TabsTrigger value="file">
+                    <Upload className="mr-2 h-4 w-4" />
+                    File Upload
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="text" className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Enter assessment description, topics covered, instructions, etc."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={6}
+                  />
+                </TabsContent>
+
+                <TabsContent value="file" className="space-y-2">
+                  <Label htmlFor="file">Upload Description File</Label>
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                    <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <Input
+                      id="file"
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      onChange={handleFileChange}
+                      className="max-w-xs mx-auto"
+                    />
+                    {selectedFile && (
+                      <p className="mt-2 text-sm text-gray-600">
+                        Selected: {selectedFile.name}
+                      </p>
+                    )}
+                    <p className="text-sm text-gray-500 mt-2">
+                      Supported formats: PDF, Word (.doc, .docx)
+                    </p>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+
+          {/* Evaluation Criteria */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Evaluation Criteria</CardTitle>
+              <CardDescription>
+                Define how the assessment will be evaluated
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                placeholder="Enter evaluation criteria, grading rubrics, marking scheme, etc."
+                value={evaluationCriteria}
+                onChange={(e) => setEvaluationCriteria(e.target.value)}
+                rows={4}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Question Configuration */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Question Configuration</CardTitle>
+              <CardDescription>
+                Configure the types and difficulty of questions
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="difficulty">Difficulty Level</Label>
+                <Select value={difficulty} onValueChange={setDifficulty}>
+                  <SelectTrigger id="difficulty">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="easy">Easy</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="hard">Hard</SelectItem>
+                    <SelectItem value="mixed">Mixed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="mcq">Multiple Choice Questions</Label>
+                  <Input
+                    id="mcq"
+                    type="number"
+                    min="0"
+                    value={mcqCount}
+                    onChange={(e) => setMcqCount(parseInt(e.target.value) || 0)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="descriptive">Descriptive Questions</Label>
+                  <Input
+                    id="descriptive"
+                    type="number"
+                    min="0"
+                    value={descriptiveCount}
+                    onChange={(e) =>
+                      setDescriptiveCount(parseInt(e.target.value) || 0)
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="numerical">Numerical Questions</Label>
+                  <Input
+                    id="numerical"
+                    type="number"
+                    min="0"
+                    value={numericalCount}
+                    onChange={(e) =>
+                      setNumericalCount(parseInt(e.target.value) || 0)
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm font-medium text-blue-900">
+                  Total Questions:{" "}
+                  {mcqCount + descriptiveCount + numericalCount}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Actions */}
+          <div className="flex gap-4 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/classroom/${id}`)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create Assessment"
+              )}
+            </Button>
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
-}
+};
+
+export default CreateAssessment;

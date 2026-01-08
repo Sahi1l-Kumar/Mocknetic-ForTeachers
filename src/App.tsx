@@ -1,19 +1,82 @@
-import { Routes, Route } from "react-router-dom";
-import Dashboard from "./pages/Dashboard";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { Toaster } from "@/components/ui/sonner";
 import Login from "./pages/Login";
-import Classroom from "./pages/Classroom";
+import Dashboard from "./pages/Dashboard";
+import ClassroomDetail from "./pages/ClassroomDetail";
 import CreateAssessment from "./pages/CreateAssessment";
+import Profile from "./pages/Profile";
+import AssessmentResults from "./pages/AssessmentResults";
+import StudentResultDetail from "./pages/StudentResultDetail";
+import ClassroomResults from "./pages/ClassroomResults";
 
-export default function App() {
+function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Login />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/classes/:classId" element={<Classroom />} />
-      <Route
-        path="/classes/:classId/assessments/new"
-        element={<CreateAssessment />}
-      />
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/classroom/:id"
+          element={
+            <ProtectedRoute>
+              <ClassroomDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/classroom/:id/results"
+          element={
+            <ProtectedRoute>
+              <ClassroomResults />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/classroom/:id/create-assessment"
+          element={
+            <ProtectedRoute>
+              <CreateAssessment />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/assessment/:assessmentId/results"
+          element={
+            <ProtectedRoute>
+              <AssessmentResults />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/assessment/:assessmentId/result/:resultId"
+          element={
+            <ProtectedRoute>
+              <StudentResultDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/" element={<Navigate to="/login" replace />} />
+      </Routes>
+      <Toaster />
+    </AuthProvider>
   );
 }
+
+export default App;
