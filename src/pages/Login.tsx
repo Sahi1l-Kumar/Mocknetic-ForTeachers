@@ -53,6 +53,7 @@ const Login = () => {
     }
 
     setIsLoading(true);
+    setErrors({});
 
     try {
       await login(email, password);
@@ -60,10 +61,22 @@ const Login = () => {
         description: "Welcome back!",
       });
       navigate("/dashboard");
-    } catch {
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error?.message ||
+        error?.message ||
+        "Invalid email or password";
+
       toast.error("Login failed", {
-        description: "Invalid email or password",
+        description: errorMessage,
       });
+
+      // Show specific error for non-teacher accounts
+      if (errorMessage.includes("Teacher access only")) {
+        setErrors({
+          email: "This account is not authorized for teacher access",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -94,10 +107,12 @@ const Login = () => {
                   type="email"
                   placeholder="teacher@example.com"
                   value={email}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    setEmail(e.target.value)
-                  }
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                    setEmail(e.target.value);
+                    setErrors({ ...errors, email: undefined });
+                  }}
                   className="pl-10"
+                  disabled={isLoading}
                 />
               </div>
               {errors.email && (
@@ -114,10 +129,12 @@ const Login = () => {
                   type="password"
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    setPassword(e.target.value)
-                  }
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                    setPassword(e.target.value);
+                    setErrors({ ...errors, password: undefined });
+                  }}
                   className="pl-10"
+                  disabled={isLoading}
                 />
               </div>
               {errors.password && (
@@ -136,6 +153,10 @@ const Login = () => {
               )}
             </Button>
           </form>
+
+          <div className="mt-4 text-center text-sm text-gray-600">
+            <p>Teacher accounts only</p>
+          </div>
         </CardContent>
       </Card>
     </div>

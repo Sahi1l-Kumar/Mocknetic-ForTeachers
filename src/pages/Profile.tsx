@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
@@ -21,53 +21,55 @@ const Profile = () => {
   const { user, updateProfile, updatePassword } = useAuth();
   const navigate = useNavigate();
 
-  const [name, setName] = useState(user?.name || "");
-  const [profileImage, setProfileImage] = useState(user?.profileImage || "");
+  const [name, setName] = useState("");
+  const [profileImage, setProfileImage] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
+  useEffect(() => {
+    if (user) {
+      setName(user.name || "");
+      setProfileImage(user.profileImage || "");
+    }
+  }, [user]);
+
   const handleProfileUpdate = async () => {
     if (!name.trim()) {
-      toast.error("Error", {
-        description: "Name cannot be empty",
-      });
+      toast.error("Name cannot be empty");
       return;
     }
 
     setIsUpdatingProfile(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    updateProfile(name, profileImage);
+    try {
+      // TODO: Add API endpoint for updating profile
+      // For now, using the context method
+      updateProfile(name, profileImage);
 
-    toast.success("Success", {
-      description: "Profile updated successfully",
-    });
-
-    setIsUpdatingProfile(false);
+      toast.success("Profile updated successfully");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to update profile");
+    } finally {
+      setIsUpdatingProfile(false);
+    }
   };
 
   const handlePasswordUpdate = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error("Error", {
-        description: "All password fields are required",
-      });
+      toast.error("All password fields are required");
       return;
     }
 
     if (newPassword.length < 6) {
-      toast.error("Error", {
-        description: "New password must be at least 6 characters",
-      });
+      toast.error("New password must be at least 6 characters");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error("Error", {
-        description: "Passwords do not match",
-      });
+      toast.error("Passwords do not match");
       return;
     }
 
@@ -75,18 +77,12 @@ const Profile = () => {
 
     try {
       await updatePassword(newPassword);
-
-      toast.success("Success", {
-        description: "Password updated successfully",
-      });
-
+      toast.success("Password updated successfully");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch {
-      toast.error("Error", {
-        description: "Failed to update password",
-      });
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to update password");
     } finally {
       setIsUpdatingPassword(false);
     }
@@ -95,6 +91,18 @@ const Profile = () => {
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image size must be less than 5MB");
+        return;
+      }
+
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please upload an image file");
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfileImage(reader.result as string);
@@ -112,14 +120,25 @@ const Profile = () => {
       .slice(0, 2);
   };
 
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-white">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Navbar />
 
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
+      <main className="mx-auto max-w-2xl px-4 sm:px-6 py-8">
         <Button
           variant="ghost"
-          className="mb-4"
+          className="mb-4 hover:bg-gray-100"
           onClick={() => navigate("/dashboard")}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -131,7 +150,6 @@ const Profile = () => {
         </h1>
 
         <div className="space-y-6">
-          {/* Profile Information */}
           <Card>
             <CardHeader>
               <CardTitle>Profile Information</CardTitle>
@@ -161,9 +179,12 @@ const Profile = () => {
                   </label>
                 </div>
                 <div>
-                  <p className="font-medium">Profile Picture</p>
+                  <p className="font-medium text-gray-900">Profile Picture</p>
                   <p className="text-sm text-gray-600">
                     Click the camera icon to upload a new photo
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Max size: 5MB. Formats: JPG, PNG, GIF
                   </p>
                 </div>
               </div>
@@ -174,6 +195,7 @@ const Profile = () => {
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter your name"
                 />
               </div>
 
@@ -181,16 +203,27 @@ const Profile = () => {
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
-                  value={user?.email || ""}
+                  value={user.email}
                   disabled
-                  className="bg-gray-100"
+                  className="bg-gray-100 cursor-not-allowed"
                 />
                 <p className="text-sm text-gray-500">Email cannot be changed</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="role">Role</Label>
+                <Input
+                  id="role"
+                  value="Teacher"
+                  disabled
+                  className="bg-gray-100 cursor-not-allowed capitalize"
+                />
               </div>
 
               <Button
                 onClick={handleProfileUpdate}
                 disabled={isUpdatingProfile}
+                className="bg-blue-600 hover:bg-blue-700"
               >
                 {isUpdatingProfile ? (
                   <>
@@ -204,7 +237,6 @@ const Profile = () => {
             </CardContent>
           </Card>
 
-          {/* Password Reset */}
           <Card>
             <CardHeader>
               <CardTitle>Change Password</CardTitle>
@@ -218,6 +250,7 @@ const Profile = () => {
                   type="password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
                 />
               </div>
 
@@ -228,7 +261,11 @@ const Profile = () => {
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
                 />
+                <p className="text-xs text-gray-500">
+                  Must be at least 6 characters
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -238,12 +275,14 @@ const Profile = () => {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
                 />
               </div>
 
               <Button
                 onClick={handlePasswordUpdate}
                 disabled={isUpdatingPassword}
+                className="bg-blue-600 hover:bg-blue-700"
               >
                 {isUpdatingPassword ? (
                   <>
