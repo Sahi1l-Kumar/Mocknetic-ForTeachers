@@ -19,9 +19,23 @@ interface Classroom {
   _id: string;
   name: string;
   description?: string;
+  code: string;
   subject?: string;
+  teacherId: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  studentCount: number;
+  assessmentCount: number;
+}
+
+interface ClassroomData {
+  _id: string;
+  name: string;
+  description?: string;
   code: string;
   teacherId: string;
+  subject?: string;
   isActive: boolean;
   studentCount: number;
   createdAt: string;
@@ -33,7 +47,10 @@ interface Student {
   name: string;
   email: string;
   image?: string;
+  username: string;
   enrolledAt: string;
+  averageScore: number;
+  completedAssessments: number;
 }
 
 interface Question {
@@ -58,6 +75,8 @@ interface Assessment {
   dueDate?: string;
   difficulty: "easy" | "medium" | "hard";
   totalQuestions: number;
+  averageScore: number;
+  completedCount: number;
   skills?: string[];
   isPublished: boolean;
   createdAt: string;
@@ -82,11 +101,15 @@ interface CreateAssessmentData {
   description?: string;
   curriculum: string;
   curriculumFile?: string;
-  dueDate?: string;
-  difficulty?: "easy" | "medium" | "hard";
+  difficulty: "easy" | "medium" | "hard";
   totalQuestions: number;
+  questionConfig: {
+    mcq: number;
+    descriptive: number;
+    numerical: number;
+  };
   skills?: string[];
-  questions?: Question[];
+  dueDate?: string;
 }
 
 interface UpdateAssessmentData {

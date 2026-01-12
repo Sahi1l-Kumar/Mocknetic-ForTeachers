@@ -36,19 +36,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-interface ClassroomData {
-  _id: string;
-  name: string;
-  description?: string;
-  code: string;
-  teacherId: string;
-  subject?: string;
-  isActive: boolean;
-  studentCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
 const CARD_COLORS = [
   { header: "from-blue-600 to-blue-700", pattern: "bg-blue-800/10" },
   { header: "from-emerald-600 to-emerald-700", pattern: "bg-emerald-800/10" },

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Navbar } from "../components/Navbar";
 import { toast } from "sonner";
@@ -13,6 +13,10 @@ import {
   Award,
   CheckCircle,
   Clock,
+  Loader2,
+  Edit,
+  Send,
+  EyeOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,140 +35,138 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-interface Student {
-  id: string;
-  name: string;
-  email: string;
-  enrolledDate: string;
-  averageScore?: number;
-  completedAssessments?: number;
-}
-
-interface Assessment {
-  id: string;
-  title: string;
-  description: string;
-  questionCount: number;
-  createdDate: string;
-  status: "draft" | "published";
-  completedCount?: number;
-  totalStudents?: number;
-  averageScore?: number;
-}
-
-interface StudentResult {
-  studentId: string;
-  studentName: string;
-  score: number;
-  percentage: number;
-  status: "completed" | "pending";
-  submittedAt?: string;
-}
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { api } from "@/lib/api";
+import { AxiosError } from "axios";
 
 const ClassroomDetail = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  const [classroom, setClassroom] = useState<Classroom | null>(null);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
   const [selectedAssessment, setSelectedAssessment] =
     useState<Assessment | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showResultsSheet, setShowResultsSheet] = useState(false);
   const [showStudentSheet, setShowStudentSheet] = useState(false);
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [assessmentToPublish, setAssessmentToPublish] =
+    useState<Assessment | null>(null);
 
-  const [classroom] = useState({
-    id: id,
-    name: "Computer Science 101",
-    classCode: "CS101ABC",
-  });
+  useEffect(() => {
+    if (!id) return;
 
-  const [students] = useState<Student[]>([
-    {
-      id: "1",
-      name: "John Doe",
-      email: "john@example.com",
-      enrolledDate: "2026-01-05",
-      averageScore: 85,
-      completedAssessments: 4,
-    },
-    {
-      id: "2",
-      name: "Jane Smith",
-      email: "jane@example.com",
-      enrolledDate: "2026-01-06",
-      averageScore: 92,
-      completedAssessments: 5,
-    },
-    {
-      id: "3",
-      name: "Mike Johnson",
-      email: "mike@example.com",
-      enrolledDate: "2026-01-07",
-      averageScore: 78,
-      completedAssessments: 3,
-    },
-  ]);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
 
-  const [assessments] = useState<Assessment[]>([
-    {
-      id: "1",
-      title: "Mid-term Exam",
-      description: "Covering chapters 1-5",
-      questionCount: 50,
-      createdDate: "2026-01-02",
-      status: "published",
-      completedCount: 30,
-      totalStudents: 32,
-      averageScore: 85.5,
-    },
-    {
-      id: "2",
-      title: "Quiz 1: Arrays",
-      description: "Basic array operations and algorithms",
-      questionCount: 20,
-      createdDate: "2026-01-04",
-      status: "draft",
-      completedCount: 0,
-      totalStudents: 32,
-      averageScore: 0,
-    },
-  ]);
+        const [classroomRes, studentsRes, assessmentsRes] = await Promise.all([
+          api.classroom.getById(id),
+          api.classroom.getStudents(id),
+          api.classroom.getAssessments(id),
+        ]);
 
-  // Mock results for selected assessment
-  const [assessmentResults] = useState<StudentResult[]>([
-    {
-      studentId: "1",
-      studentName: "John Doe",
-      score: 85,
-      percentage: 85,
-      status: "completed",
-      submittedAt: "2026-01-08T10:30:00",
-    },
-    {
-      studentId: "2",
-      studentName: "Jane Smith",
-      score: 92,
-      percentage: 92,
-      status: "completed",
-      submittedAt: "2026-01-08T11:15:00",
-    },
-    {
-      studentId: "3",
-      studentName: "Mike Johnson",
-      score: 78,
-      percentage: 78,
-      status: "completed",
-      submittedAt: "2026-01-08T09:45:00",
-    },
-  ]);
+        if (classroomRes.data.success && classroomRes.data.data) {
+          setClassroom(classroomRes.data.data);
+        }
+
+        if (studentsRes.data.success && studentsRes.data.data) {
+          setStudents(studentsRes.data.data);
+        }
+
+        if (assessmentsRes.data.success && assessmentsRes.data.data) {
+          setAssessments(assessmentsRes.data.data);
+        }
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        const error = err as AxiosError<{ error?: { message?: string } }>;
+        const errorMessage =
+          error.response?.data?.error?.message ||
+          "Failed to load classroom data";
+        toast.error(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id]);
 
   const copyClassCode = () => {
-    navigator.clipboard.writeText(classroom.classCode);
+    if (!classroom) return;
+    navigator.clipboard.writeText(classroom.code);
     toast.success("Copied!", {
       description: "Class code copied to clipboard",
     });
+  };
+
+  const handleEditAssessment = (assessmentId: string) => {
+    navigate(`/assessment/${assessmentId}/edit`);
+  };
+
+  const handlePublishClick = (assessment: Assessment) => {
+    setAssessmentToPublish(assessment);
+    setShowPublishDialog(true);
+  };
+
+  const handlePublishConfirm = async () => {
+    if (!assessmentToPublish) return;
+
+    try {
+      setPublishingId(assessmentToPublish._id);
+      setShowPublishDialog(false);
+
+      const newPublishStatus = !assessmentToPublish.isPublished;
+
+      const response = await api.assessment.publish(
+        assessmentToPublish._id,
+        newPublishStatus
+      );
+
+      if (response.data.success) {
+        // Update the assessments list
+        setAssessments((prev) =>
+          prev.map((a) =>
+            a._id === assessmentToPublish._id
+              ? { ...a, isPublished: newPublishStatus }
+              : a
+          )
+        );
+
+        toast.success(
+          newPublishStatus ? "Assessment Published!" : "Assessment Unpublished",
+          {
+            description: newPublishStatus
+              ? "Students can now join this assessment"
+              : "Assessment is now hidden from students",
+          }
+        );
+      }
+    } catch (err) {
+      console.error("Error publishing assessment:", err);
+      const error = err as AxiosError<{ error?: { message?: string } }>;
+      const errorMessage =
+        error.response?.data?.error?.message ||
+        "Failed to update assessment status";
+      toast.error("Error", { description: errorMessage });
+    } finally {
+      setPublishingId(null);
+      setAssessmentToPublish(null);
+    }
   };
 
   const handleViewResults = (assessment: Assessment) => {
@@ -177,15 +179,43 @@ const ClassroomDetail = () => {
     setShowStudentSheet(true);
   };
 
-  const handleViewDetailedResult = (studentId: string) => {
-    navigate(`/assessment/${selectedAssessment?.id}/result/${studentId}`);
+  const handleViewDetailedResults = () => {
+    if (!selectedAssessment) return;
+    navigate(`/assessment/${selectedAssessment._id}/results`);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <Navbar />
+        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!classroom) {
+    return (
+      <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <Navbar />
+        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-2">Classroom not found</h2>
+            <Button onClick={() => navigate("/dashboard")}>
+              Go to Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50 to-indigo-50">
       <Navbar />
 
-      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-7xl">
         <Button
           variant="ghost"
           className="mb-4"
@@ -197,17 +227,27 @@ const ClassroomDetail = () => {
           <span className="sm:hidden">Back</span>
         </Button>
 
-        {/* Mobile-optimized header */}
+        {/* Header */}
         <div className="mb-4 sm:mb-6 bg-white p-4 sm:p-6 rounded-lg border shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">
                 {classroom.name}
               </h1>
+              {classroom.subject && (
+                <p className="text-sm text-gray-600 mt-1">
+                  {classroom.subject}
+                </p>
+              )}
+              {classroom.description && (
+                <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                  {classroom.description}
+                </p>
+              )}
               <div className="flex items-center gap-2 mt-2">
                 <span className="text-xs sm:text-sm text-gray-600">Code:</span>
                 <span className="font-mono text-xs sm:text-sm bg-slate-100 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md border">
-                  {classroom.classCode}
+                  {classroom.code}
                 </span>
                 <Button
                   variant="ghost"
@@ -220,19 +260,19 @@ const ClassroomDetail = () => {
               </div>
             </div>
 
-            {/* Quick Stats - Mobile friendly */}
+            {/* Quick Stats */}
             <div className="grid grid-cols-2 sm:flex gap-3 sm:gap-4 text-center">
               <div className="bg-blue-50 p-3 rounded-lg">
                 <Users className="h-5 w-5 mx-auto text-blue-600 mb-1" />
                 <p className="text-xl sm:text-2xl font-bold text-gray-900">
-                  {students.length}
+                  {classroom.studentCount}
                 </p>
                 <p className="text-xs text-gray-600">Students</p>
               </div>
               <div className="bg-purple-50 p-3 rounded-lg">
                 <FileText className="h-5 w-5 mx-auto text-purple-600 mb-1" />
                 <p className="text-xl sm:text-2xl font-bold text-gray-900">
-                  {assessments.length}
+                  {classroom.assessmentCount}
                 </p>
                 <p className="text-xs text-gray-600">Assessments</p>
               </div>
@@ -240,7 +280,7 @@ const ClassroomDetail = () => {
           </div>
         </div>
 
-        {/* Mobile-optimized tabs */}
+        {/* Tabs */}
         <Tabs defaultValue="assessments" className="space-y-4">
           <TabsList className="grid w-full grid-cols-2 h-auto">
             <TabsTrigger
@@ -281,86 +321,140 @@ const ClassroomDetail = () => {
               </Button>
             </div>
 
-            {/* Mobile-friendly assessment cards */}
-            <div className="grid gap-3 sm:gap-4">
-              {assessments.map((assessment) => (
-                <Card
-                  key={assessment.id}
-                  className="hover:shadow-md transition-shadow"
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="text-base sm:text-lg truncate">
-                          {assessment.title}
-                        </CardTitle>
-                        <CardDescription className="text-xs sm:text-sm line-clamp-1">
-                          {assessment.description}
-                        </CardDescription>
-                      </div>
-                      <Badge
-                        variant={
-                          assessment.status === "published"
-                            ? "default"
-                            : "secondary"
-                        }
-                        className="shrink-0"
-                      >
-                        {assessment.status}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {/* Stats Grid - Mobile optimized */}
-                    {assessment.status === "published" && (
-                      <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center bg-slate-50 p-2 sm:p-3 rounded-lg">
-                        <div>
-                          <p className="text-lg sm:text-xl font-bold text-primary">
-                            {assessment.averageScore}%
-                          </p>
-                          <p className="text-xs text-gray-600">Avg Score</p>
+            {assessments.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <FileText className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                  <p className="text-gray-600 mb-4">No assessments yet</p>
+                  <Button
+                    onClick={() =>
+                      navigate(`/classroom/${id}/create-assessment`)
+                    }
+                    size="sm"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Your First Assessment
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-3 sm:gap-4">
+                {assessments.map((assessment) => (
+                  <Card
+                    key={assessment._id}
+                    className="hover:shadow-md transition-shadow"
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-base sm:text-lg truncate">
+                            {assessment.title}
+                          </CardTitle>
+                          <CardDescription className="text-xs sm:text-sm line-clamp-1">
+                            {assessment.description || "No description"}
+                          </CardDescription>
                         </div>
-                        <div>
-                          <p className="text-lg sm:text-xl font-bold">
-                            {assessment.completedCount}
-                          </p>
-                          <p className="text-xs text-gray-600">Completed</p>
-                        </div>
-                        <div>
-                          <p className="text-lg sm:text-xl font-bold">
-                            {assessment.questionCount}
-                          </p>
-                          <p className="text-xs text-gray-600">Questions</p>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge
+                            variant="outline"
+                            className="capitalize text-xs"
+                          >
+                            {assessment.difficulty}
+                          </Badge>
+                          <Badge
+                            variant={
+                              assessment.isPublished ? "default" : "secondary"
+                            }
+                          >
+                            {assessment.isPublished ? "Published" : "Draft"}
+                          </Badge>
                         </div>
                       </div>
-                    )}
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {assessment.isPublished && (
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center bg-slate-50 p-2 sm:p-3 rounded-lg">
+                          <div>
+                            <p className="text-lg sm:text-xl font-bold text-primary">
+                              {assessment.averageScore.toFixed(1)}%
+                            </p>
+                            <p className="text-xs text-gray-600">Avg Score</p>
+                          </div>
+                          <div>
+                            <p className="text-lg sm:text-xl font-bold">
+                              {assessment.completedCount}
+                            </p>
+                            <p className="text-xs text-gray-600">Completed</p>
+                          </div>
+                          <div>
+                            <p className="text-lg sm:text-xl font-bold">
+                              {assessment.totalQuestions}
+                            </p>
+                            <p className="text-xs text-gray-600">Questions</p>
+                          </div>
+                        </div>
+                      )}
 
-                    {/* Action buttons */}
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      {assessment.status === "published" && (
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        {/* Edit Button */}
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleViewResults(assessment)}
                           className="w-full sm:w-auto"
+                          onClick={() => handleEditAssessment(assessment._id)}
+                          disabled={publishingId === assessment._id}
                         >
-                          <BarChart3 className="mr-2 h-4 w-4" />
-                          View Results
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
                         </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                      >
-                        <Eye className="mr-2 h-4 w-4" />
-                        Edit
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+
+                        {/* Publish/Unpublish Button */}
+                        <Button
+                          variant={
+                            assessment.isPublished ? "destructive" : "default"
+                          }
+                          size="sm"
+                          className="w-full sm:w-auto"
+                          onClick={() => handlePublishClick(assessment)}
+                          disabled={publishingId === assessment._id}
+                        >
+                          {publishingId === assessment._id ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Processing...
+                            </>
+                          ) : assessment.isPublished ? (
+                            <>
+                              <EyeOff className="mr-2 h-4 w-4" />
+                              Unpublish
+                            </>
+                          ) : (
+                            <>
+                              <Send className="mr-2 h-4 w-4" />
+                              Publish
+                            </>
+                          )}
+                        </Button>
+
+                        {/* View Results (only for published) */}
+                        {assessment.isPublished && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewResults(assessment)}
+                            className="w-full sm:w-auto"
+                          >
+                            <BarChart3 className="mr-2 h-4 w-4" />
+                            <span className="hidden sm:inline">Results</span>
+                            <span className="sm:hidden">Results</span>
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* Students Tab */}
@@ -374,45 +468,103 @@ const ClassroomDetail = () => {
               </p>
             </div>
 
-            {/* Mobile-friendly student cards */}
-            <div className="grid gap-3">
-              {students.map((student) => (
-                <Card
-                  key={student.id}
-                  className="hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => handleViewStudent(student)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm sm:text-base truncate">
-                          {student.name}
-                        </p>
-                        <p className="text-xs sm:text-sm text-gray-600 truncate">
-                          {student.email}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-                        <div className="text-right">
-                          <p className="text-lg sm:text-xl font-bold text-primary">
-                            {student.averageScore}%
-                          </p>
-                          <p className="text-xs text-gray-600 whitespace-nowrap">
-                            {student.completedAssessments} tests
-                          </p>
+            {students.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Users className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                  <p className="text-gray-600 mb-2">No students enrolled yet</p>
+                  <p className="text-sm text-gray-500">
+                    Share the class code{" "}
+                    <span className="font-mono font-semibold">
+                      {classroom.code}
+                    </span>{" "}
+                    with your students
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-3">
+                {students.map((student) => (
+                  <Card
+                    key={student._id}
+                    className="hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => handleViewStudent(student)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          {student.image && (
+                            <img
+                              src={student.image}
+                              alt={student.name}
+                              className="h-10 w-10 rounded-full object-cover"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm sm:text-base truncate">
+                              {student.name}
+                            </p>
+                            <p className="text-xs sm:text-sm text-gray-600 truncate">
+                              {student.email}
+                            </p>
+                          </div>
                         </div>
-                        <Eye className="h-5 w-5 text-gray-400" />
+                        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+                          <div className="text-right">
+                            <p className="text-lg sm:text-xl font-bold text-primary">
+                              {student.averageScore.toFixed(1)}%
+                            </p>
+                            <p className="text-xs text-gray-600 whitespace-nowrap">
+                              {student.completedAssessments} tests
+                            </p>
+                          </div>
+                          <Eye className="h-5 w-5 text-gray-400" />
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </main>
 
-      {/* Assessment Results Sheet - Mobile friendly */}
+      {/* Publish Confirmation Dialog */}
+      <AlertDialog open={showPublishDialog} onOpenChange={setShowPublishDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {assessmentToPublish?.isPublished
+                ? "Unpublish Assessment?"
+                : "Publish Assessment?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {assessmentToPublish?.isPublished ? (
+                <>
+                  Students will no longer be able to join this assessment.
+                  Already started assessments will not be affected.
+                </>
+              ) : (
+                <>
+                  Students will be able to join{" "}
+                  <strong>{assessmentToPublish?.title}</strong>. AI will
+                  generate unique questions for each student based on your
+                  curriculum.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePublishConfirm}>
+              {assessmentToPublish?.isPublished ? "Unpublish" : "Publish"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Assessment Results Sheet */}
       <Sheet open={showResultsSheet} onOpenChange={setShowResultsSheet}>
         <SheetContent side="right" className="w-full sm:max-w-2xl p-0">
           <ScrollArea className="h-full">
@@ -426,7 +578,6 @@ const ClassroomDetail = () => {
                 </SheetDescription>
               </SheetHeader>
 
-              {/* Quick Stats */}
               <div className="grid grid-cols-2 gap-3 mb-6">
                 <Card>
                   <CardContent className="p-3 sm:p-4">
@@ -434,7 +585,7 @@ const ClassroomDetail = () => {
                       <Award className="h-5 w-5 text-primary" />
                       <div>
                         <p className="text-xl sm:text-2xl font-bold">
-                          {selectedAssessment?.averageScore}%
+                          {selectedAssessment?.averageScore.toFixed(1)}%
                         </p>
                         <p className="text-xs text-gray-600">Avg Score</p>
                       </div>
@@ -456,47 +607,14 @@ const ClassroomDetail = () => {
                 </Card>
               </div>
 
-              {/* Student Results List */}
-              <div className="space-y-2">
-                <h3 className="font-semibold mb-3">Student Results</h3>
-                {assessmentResults.map((result) => (
-                  <Card
-                    key={result.studentId}
-                    className="hover:bg-slate-50 transition-colors cursor-pointer"
-                    onClick={() => handleViewDetailedResult(result.studentId)}
-                  >
-                    <CardContent className="p-3 sm:p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm sm:text-base truncate">
-                            {result.studentName}
-                          </p>
-                          {result.submittedAt && (
-                            <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
-                              <Clock className="h-3 w-3" />
-                              {new Date(
-                                result.submittedAt
-                              ).toLocaleDateString()}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <p className="text-lg sm:text-xl font-bold text-primary">
-                              {result.percentage}%
-                            </p>
-                            <Progress
-                              value={result.percentage}
-                              className="w-16 sm:w-20 h-1.5 mt-1"
-                            />
-                          </div>
-                          <Eye className="h-5 w-5 text-gray-400" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <Button
+                onClick={handleViewDetailedResults}
+                className="w-full"
+                size="lg"
+              >
+                <BarChart3 className="mr-2 h-5 w-5" />
+                View Detailed Results
+              </Button>
             </div>
           </ScrollArea>
         </SheetContent>
@@ -508,18 +626,30 @@ const ClassroomDetail = () => {
           <ScrollArea className="h-full">
             <div className="p-4 sm:p-6">
               <SheetHeader className="mb-4">
-                <SheetTitle className="text-xl sm:text-2xl">
-                  {selectedStudent?.name}
-                </SheetTitle>
-                <SheetDescription>{selectedStudent?.email}</SheetDescription>
+                <div className="flex items-center gap-3">
+                  {selectedStudent?.image && (
+                    <img
+                      src={selectedStudent.image}
+                      alt={selectedStudent.name}
+                      className="h-12 w-12 rounded-full object-cover"
+                    />
+                  )}
+                  <div>
+                    <SheetTitle className="text-xl sm:text-2xl">
+                      {selectedStudent?.name}
+                    </SheetTitle>
+                    <SheetDescription>
+                      {selectedStudent?.email}
+                    </SheetDescription>
+                  </div>
+                </div>
               </SheetHeader>
 
-              {/* Student Stats */}
               <div className="grid grid-cols-2 gap-3 mb-6">
                 <Card className="bg-linear-to-br from-blue-50 to-blue-100">
                   <CardContent className="p-4 text-center">
                     <p className="text-3xl font-bold text-blue-700">
-                      {selectedStudent?.averageScore}%
+                      {selectedStudent?.averageScore.toFixed(1)}%
                     </p>
                     <p className="text-xs text-blue-600 mt-1">Average Score</p>
                   </CardContent>
@@ -534,37 +664,18 @@ const ClassroomDetail = () => {
                 </Card>
               </div>
 
-              {/* Assessment History */}
-              <div className="space-y-2">
-                <h3 className="font-semibold mb-3">Assessment History</h3>
-                {assessments
-                  .filter((a) => a.status === "published")
-                  .map((assessment) => (
-                    <Card key={assessment.id} className="hover:bg-slate-50">
-                      <CardContent className="p-3">
-                        <div className="flex justify-between items-center">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">
-                              {assessment.title}
-                            </p>
-                            <p className="text-xs text-gray-600">
-                              {new Date(
-                                assessment.createdDate
-                              ).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold text-primary">
-                              85%
-                            </p>
-                            <Badge variant="outline" className="text-xs">
-                              Passed
-                            </Badge>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+              <div className="text-sm text-gray-600 bg-slate-50 p-3 rounded-lg">
+                <Clock className="h-4 w-4 inline mr-2" />
+                Enrolled on{" "}
+                {selectedStudent &&
+                  new Date(selectedStudent.enrolledAt).toLocaleDateString(
+                    "en-US",
+                    {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    }
+                  )}
               </div>
             </div>
           </ScrollArea>
