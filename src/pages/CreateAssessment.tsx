@@ -3,7 +3,14 @@ import type { ChangeEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Navbar } from "../components/Navbar";
 import { toast } from "sonner";
-import { ArrowLeft, FileText, Upload, Loader2, Clock } from "lucide-react";
+import {
+  ArrowLeft,
+  FileText,
+  Upload,
+  Loader2,
+  Clock,
+  Info,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,6 +30,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { api } from "@/lib/api";
 import { AxiosError } from "axios";
 
@@ -196,6 +209,52 @@ const CreateAssessment = () => {
     }
   };
 
+  const questionLevelExamples: Record<
+    string,
+    { label: string; example: string; suitable: string }
+  > = {
+    knowledge: {
+      label: "Basic (Remember)",
+      example: 'Example: "List three renewable sources of energy."',
+      suitable: "Good for: Simple recall of facts, dates, terms, or formulas.",
+    },
+    comprehension: {
+      label: "Simple (Understand)",
+      example:
+        'Example: "In your own words, explain why recycling is important."',
+      suitable:
+        "Good for: Checking if students understood the idea, not just memorized it.",
+    },
+    application: {
+      label: "Intermediate (Apply)",
+      example:
+        'Example: "A family uses 400 units of electricity in a month. Calculate their bill if 1 unit costs ₹6."',
+      suitable:
+        "Good for: Using concepts or formulas to solve everyday problems.",
+    },
+    analysis: {
+      label: "Advanced (Analyze) ⭐",
+      example:
+        'Example: "Compare online classes and classroom teaching. What are two advantages and two disadvantages of each?"',
+      suitable:
+        "Good for: Comparing, finding patterns, and breaking a topic into parts.",
+    },
+    synthesis: {
+      label: "Expert (Evaluate)",
+      example:
+        'Example: "A city can invest in buses or metro trains. Which option do you think is better and why?"',
+      suitable:
+        "Good for: Asking students to choose and justify their opinion with reasons.",
+    },
+    evaluation: {
+      label: "Master (Create)",
+      example:
+        'Example: "Design a one-day activity or project to teach students about water conservation."',
+      suitable:
+        "Good for: Asking students to create or design something new using what they learned.",
+    },
+  };
+
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50 to-indigo-50">
       <Navbar />
@@ -316,7 +375,7 @@ const CreateAssessment = () => {
                 Question Configuration
               </CardTitle>
               <CardDescription className="text-sm">
-                Configure the types, difficulty, duration, and cognitive level
+                Configure the types, difficulty, duration, and question style
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 sm:space-y-6">
@@ -338,6 +397,9 @@ const CreateAssessment = () => {
                       <SelectItem value="hard">Hard</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-gray-500">
+                    How challenging the questions should be
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -357,18 +419,38 @@ const CreateAssessment = () => {
                   />
                   <p className="text-xs text-gray-500">
                     {duration < 30
-                      ? "Quick"
+                      ? "Quick quiz"
                       : duration < 60
-                        ? "Standard"
+                        ? "Standard test"
                         : duration < 120
-                          ? "Extended"
-                          : "Long"}{" "}
-                    assessment
+                          ? "Extended exam"
+                          : "Long exam"}
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="cognitiveLevel">Cognitive Level</Label>
+                  <Label
+                    htmlFor="cognitiveLevel"
+                    className="flex items-center gap-2"
+                  >
+                    Question Type
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p className="font-semibold mb-2">
+                            What kind of questions to generate?
+                          </p>
+                          <p className="text-xs">
+                            Higher levels require deeper thinking. Most
+                            university exams use "Advanced" or "Expert" level.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </Label>
                   <Select
                     value={cognitiveLevel}
                     onValueChange={(v) =>
@@ -378,20 +460,42 @@ const CreateAssessment = () => {
                     <SelectTrigger id="cognitiveLevel">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="knowledge">L1: Remember</SelectItem>
-                      <SelectItem value="comprehension">
-                        L2: Understand
+                    <SelectContent className="max-w-md">
+                      <SelectItem value="knowledge">
+                        <span className="font-medium">Basic (Remember)</span>
                       </SelectItem>
-                      <SelectItem value="application">L3: Apply</SelectItem>
-                      <SelectItem value="analysis">L4: Analyze ⭐</SelectItem>
-                      <SelectItem value="synthesis">L5: Evaluate</SelectItem>
-                      <SelectItem value="evaluation">L6: Create</SelectItem>
+                      <SelectItem value="comprehension">
+                        <span className="font-medium">Simple (Understand)</span>
+                      </SelectItem>
+                      <SelectItem value="application">
+                        <span className="font-medium">
+                          Intermediate (Apply)
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="analysis">
+                        <span className="font-medium">
+                          Advanced (Analyze) ⭐
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="synthesis">
+                        <span className="font-medium">Expert (Evaluate)</span>
+                      </SelectItem>
+                      <SelectItem value="evaluation">
+                        <span className="font-medium">Master (Create)</span>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-gray-500">
-                    Bloom's Taxonomy level
-                  </p>
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mt-2">
+                    <p className="text-xs font-semibold text-slate-900 mb-1">
+                      {questionLevelExamples[cognitiveLevel].label}
+                    </p>
+                    <p className="text-xs text-slate-600 mb-2 italic">
+                      {questionLevelExamples[cognitiveLevel].example}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {questionLevelExamples[cognitiveLevel].suitable}
+                    </p>
+                  </div>
                 </div>
               </div>
 
