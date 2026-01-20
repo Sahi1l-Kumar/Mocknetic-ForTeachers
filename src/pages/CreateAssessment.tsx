@@ -3,7 +3,7 @@ import type { ChangeEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Navbar } from "../components/Navbar";
 import { toast } from "sonner";
-import { ArrowLeft, FileText, Upload, Loader2 } from "lucide-react";
+import { ArrowLeft, FileText, Upload, Loader2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -39,6 +39,7 @@ const CreateAssessment = () => {
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">(
     "medium",
   );
+  const [duration, setDuration] = useState(60);
 
   const [cognitiveLevel, setCognitiveLevel] = useState<
     | "knowledge"
@@ -127,6 +128,13 @@ const CreateAssessment = () => {
       return;
     }
 
+    if (duration <= 0) {
+      toast.error("Error", {
+        description: "Please enter a valid duration",
+      });
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -153,6 +161,7 @@ const CreateAssessment = () => {
         curriculumFile: curriculumFile,
         difficulty: difficulty,
         cognitiveLevel: cognitiveLevel,
+        duration: duration,
         totalQuestions: totalQuestions,
         questionConfig: {
           mcq: mcqCount,
@@ -307,11 +316,11 @@ const CreateAssessment = () => {
                 Question Configuration
               </CardTitle>
               <CardDescription className="text-sm">
-                Configure the types, difficulty, and cognitive level
+                Configure the types, difficulty, duration, and cognitive level
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 sm:space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="difficulty">Difficulty Level</Label>
                   <Select
@@ -332,9 +341,34 @@ const CreateAssessment = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="cognitiveLevel">
-                    Cognitive Level (Bloom's Taxonomy)
+                  <Label htmlFor="duration" className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Duration (minutes) *
                   </Label>
+                  <Input
+                    id="duration"
+                    type="number"
+                    min="5"
+                    max="300"
+                    value={duration}
+                    onChange={(e) =>
+                      setDuration(parseInt(e.target.value) || 60)
+                    }
+                  />
+                  <p className="text-xs text-gray-500">
+                    {duration < 30
+                      ? "Quick"
+                      : duration < 60
+                        ? "Standard"
+                        : duration < 120
+                          ? "Extended"
+                          : "Long"}{" "}
+                    assessment
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cognitiveLevel">Cognitive Level</Label>
                   <Select
                     value={cognitiveLevel}
                     onValueChange={(v) =>
@@ -345,29 +379,18 @@ const CreateAssessment = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="knowledge">
-                        Level 1: Remember
-                      </SelectItem>
+                      <SelectItem value="knowledge">L1: Remember</SelectItem>
                       <SelectItem value="comprehension">
-                        Level 2: Understand
+                        L2: Understand
                       </SelectItem>
-                      <SelectItem value="application">
-                        Level 3: Apply
-                      </SelectItem>
-                      <SelectItem value="analysis">
-                        Level 4: Analyze (Recommended)
-                      </SelectItem>
-                      <SelectItem value="synthesis">
-                        Level 5: Evaluate
-                      </SelectItem>
-                      <SelectItem value="evaluation">
-                        Level 6: Create
-                      </SelectItem>
+                      <SelectItem value="application">L3: Apply</SelectItem>
+                      <SelectItem value="analysis">L4: Analyze ⭐</SelectItem>
+                      <SelectItem value="synthesis">L5: Evaluate</SelectItem>
+                      <SelectItem value="evaluation">L6: Create</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-gray-500">
-                    Higher levels require deeper thinking (Level 4+ recommended
-                    for university)
+                    Bloom's Taxonomy level
                   </p>
                 </div>
               </div>
@@ -407,9 +430,14 @@ const CreateAssessment = () => {
               </div>
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 space-y-2">
-                <p className="text-sm font-medium text-blue-900">
-                  Total Questions: {mcqCount + numericalCount}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-blue-900">
+                    Total Questions: {mcqCount + numericalCount}
+                  </p>
+                  <p className="text-sm font-medium text-blue-900">
+                    Duration: {duration} min
+                  </p>
+                </div>
                 <div className="space-y-1">
                   <p className="text-xs text-blue-700">
                     ✓ Questions enriched with web-scraped educational content
