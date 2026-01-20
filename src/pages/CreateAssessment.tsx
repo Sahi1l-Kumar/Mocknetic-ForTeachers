@@ -33,16 +33,23 @@ const CreateAssessment = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [descriptionMethod, setDescriptionMethod] = useState<"text" | "file">(
-    "text"
+    "text",
   );
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [evaluationCriteria, setEvaluationCriteria] = useState("");
-
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">(
-    "medium"
+    "medium",
   );
+
+  const [cognitiveLevel, setCognitiveLevel] = useState<
+    | "knowledge"
+    | "comprehension"
+    | "application"
+    | "analysis"
+    | "synthesis"
+    | "evaluation"
+  >("analysis");
+
   const [mcqCount, setMcqCount] = useState(10);
-  const [descriptiveCount, setDescriptiveCount] = useState(5);
   const [numericalCount, setNumericalCount] = useState(5);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -111,7 +118,7 @@ const CreateAssessment = () => {
       return;
     }
 
-    const totalQuestions = mcqCount + descriptiveCount + numericalCount;
+    const totalQuestions = mcqCount + numericalCount;
 
     if (totalQuestions === 0) {
       toast.error("Error", {
@@ -125,7 +132,6 @@ const CreateAssessment = () => {
 
       let curriculumFile: string | undefined;
 
-      // Upload file if file method is selected
       if (descriptionMethod === "file" && selectedFile) {
         const uploadedUrl = await uploadFile(selectedFile);
         if (!uploadedUrl) {
@@ -135,8 +141,8 @@ const CreateAssessment = () => {
         curriculumFile = uploadedUrl;
       }
 
-      // Prepare assessment data with questionConfig
-      const assessmentData = {
+      // Prepare assessment data with proper types
+      const assessmentData: CreateAssessmentData = {
         title: title.trim(),
         description:
           descriptionMethod === "text" ? description.trim() : undefined,
@@ -146,24 +152,27 @@ const CreateAssessment = () => {
             : selectedFile?.name || "",
         curriculumFile: curriculumFile,
         difficulty: difficulty,
+        cognitiveLevel: cognitiveLevel,
         totalQuestions: totalQuestions,
         questionConfig: {
           mcq: mcqCount,
-          descriptive: descriptiveCount,
           numerical: numericalCount,
         },
-        skills: evaluationCriteria.trim()
-          ? evaluationCriteria.split(",").map((s) => s.trim())
-          : [],
+        includesEquations: false,
+        fairnessConfig: {
+          enableQuestionVariants: true,
+          minVariantsPerConcept: 3,
+          maxDifficultyDeviation: 0.1,
+          requirementPerStudent: "both" as const,
+        },
       };
 
-      // Create assessment
       const response = await api.classroom.createAssessment(id, assessmentData);
 
       if (response.data.success) {
         toast.success("Success!", {
           description:
-            "Assessment created successfully. You can now edit or publish it.",
+            "Assessment created successfully. Questions will be enriched with web content when generated.",
         });
         navigate(`/classroom/${id}`);
       }
@@ -199,7 +208,8 @@ const CreateAssessment = () => {
             Create New Assessment
           </h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">
-            Design a comprehensive assessment for your students
+            Design a university-level assessment with AI-powered question
+            generation
           </p>
         </div>
 
@@ -255,7 +265,8 @@ const CreateAssessment = () => {
                     className="resize-none"
                   />
                   <p className="text-xs text-gray-500">
-                    AI will generate questions based on this curriculum
+                    AI will enrich this with web content and generate
+                    university-level questions
                   </p>
                 </TabsContent>
 
@@ -289,30 +300,6 @@ const CreateAssessment = () => {
             </CardContent>
           </Card>
 
-          {/* Evaluation Criteria */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg sm:text-xl">
-                Evaluation Skills (Optional)
-              </CardTitle>
-              <CardDescription className="text-sm">
-                Define skills to evaluate (comma-separated)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder="e.g., Problem Solving, Critical Thinking, Code Implementation, Algorithm Design"
-                value={evaluationCriteria}
-                onChange={(e) => setEvaluationCriteria(e.target.value)}
-                rows={3}
-                className="resize-none"
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                Separate multiple skills with commas
-              </p>
-            </CardContent>
-          </Card>
-
           {/* Question Configuration */}
           <Card>
             <CardHeader>
@@ -320,30 +307,72 @@ const CreateAssessment = () => {
                 Question Configuration
               </CardTitle>
               <CardDescription className="text-sm">
-                Configure the types and difficulty of questions
+                Configure the types, difficulty, and cognitive level
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 sm:space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="difficulty">Difficulty Level</Label>
-                <Select
-                  value={difficulty}
-                  onValueChange={(v) =>
-                    setDifficulty(v as "easy" | "medium" | "hard")
-                  }
-                >
-                  <SelectTrigger id="difficulty">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="easy">Easy</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="hard">Hard</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="difficulty">Difficulty Level</Label>
+                  <Select
+                    value={difficulty}
+                    onValueChange={(v) =>
+                      setDifficulty(v as "easy" | "medium" | "hard")
+                    }
+                  >
+                    <SelectTrigger id="difficulty">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="easy">Easy</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="hard">Hard</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cognitiveLevel">
+                    Cognitive Level (Bloom's Taxonomy)
+                  </Label>
+                  <Select
+                    value={cognitiveLevel}
+                    onValueChange={(v) =>
+                      setCognitiveLevel(v as typeof cognitiveLevel)
+                    }
+                  >
+                    <SelectTrigger id="cognitiveLevel">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="knowledge">
+                        Level 1: Remember
+                      </SelectItem>
+                      <SelectItem value="comprehension">
+                        Level 2: Understand
+                      </SelectItem>
+                      <SelectItem value="application">
+                        Level 3: Apply
+                      </SelectItem>
+                      <SelectItem value="analysis">
+                        Level 4: Analyze (Recommended)
+                      </SelectItem>
+                      <SelectItem value="synthesis">
+                        Level 5: Evaluate
+                      </SelectItem>
+                      <SelectItem value="evaluation">
+                        Level 6: Create
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    Higher levels require deeper thinking (Level 4+ recommended
+                    for university)
+                  </p>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="mcq">MCQ Questions</Label>
                   <Input
@@ -354,26 +383,13 @@ const CreateAssessment = () => {
                     value={mcqCount}
                     onChange={(e) => setMcqCount(parseInt(e.target.value) || 0)}
                   />
-                  <p className="text-xs text-gray-500">Multiple choice</p>
+                  <p className="text-xs text-gray-500">
+                    Multiple choice with 4 options
+                  </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="descriptive">Descriptive</Label>
-                  <Input
-                    id="descriptive"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={descriptiveCount}
-                    onChange={(e) =>
-                      setDescriptiveCount(parseInt(e.target.value) || 0)
-                    }
-                  />
-                  <p className="text-xs text-gray-500">Text answers</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="numerical">Numerical</Label>
+                  <Label htmlFor="numerical">Numerical Questions</Label>
                   <Input
                     id="numerical"
                     type="number"
@@ -384,19 +400,32 @@ const CreateAssessment = () => {
                       setNumericalCount(parseInt(e.target.value) || 0)
                     }
                   />
-                  <p className="text-xs text-gray-500">Number answers</p>
+                  <p className="text-xs text-gray-500">
+                    Number answers (supports equations with LaTeX)
+                  </p>
                 </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 space-y-2">
                 <p className="text-sm font-medium text-blue-900">
-                  Total Questions:{" "}
-                  {mcqCount + descriptiveCount + numericalCount}
+                  Total Questions: {mcqCount + numericalCount}
                 </p>
-                <p className="text-xs text-blue-700 mt-1">
-                  Unique questions will be generated by AI for each student when
-                  they join
-                </p>
+                <div className="space-y-1">
+                  <p className="text-xs text-blue-700">
+                    ✓ Questions enriched with web-scraped educational content
+                  </p>
+                  <p className="text-xs text-blue-700">
+                    ✓ Each student gets unique question variants (fair
+                    difficulty)
+                  </p>
+                  <p className="text-xs text-blue-700">
+                    ✓ LaTeX equations rendered beautifully for math/engineering
+                    topics
+                  </p>
+                  <p className="text-xs text-blue-700">
+                    ✓ All questions auto-graded instantly
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>

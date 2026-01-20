@@ -18,14 +18,14 @@ apiClient.interceptors.response.use(
       window.location.href = "/login";
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export const api = {
   auth: {
     signIn: (
       email: string,
-      password: string
+      password: string,
     ): Promise<AxiosResponse<ApiResponse<{ user: User }>>> =>
       apiClient.post("/auth/teacher/signin", { email, password }),
 
@@ -44,42 +44,44 @@ export const api = {
       apiClient.get(`/classroom/${id}`),
 
     create: (
-      data: CreateClassroomData
+      data: CreateClassroomData,
     ): Promise<AxiosResponse<ApiResponse<Classroom>>> =>
       apiClient.post("/classroom", data),
 
     update: (
       id: string,
-      data: UpdateClassroomData
+      data: UpdateClassroomData,
     ): Promise<AxiosResponse<ApiResponse<Classroom>>> =>
       apiClient.put(`/classroom/${id}`, data),
 
     delete: (id: string): Promise<AxiosResponse<ApiResponse>> =>
       apiClient.delete(`/classroom/${id}`),
 
-    getStudents: (id: string): Promise<AxiosResponse<ApiResponse<Student[]>>> =>
+    getStudents: (
+      id: string,
+    ): Promise<AxiosResponse<ApiResponse<StudentPerformance[]>>> =>
       apiClient.get(`/classroom/${id}/student`),
 
     addStudent: (
       id: string,
-      studentEmail: string
+      studentEmail: string,
     ): Promise<AxiosResponse<ApiResponse>> =>
       apiClient.post(`/classroom/${id}/student`, { studentEmail }),
 
     removeStudent: (
       classroomId: string,
-      studentId: string
+      studentId: string,
     ): Promise<AxiosResponse<ApiResponse>> =>
       apiClient.delete(`/classroom/${classroomId}/student/${studentId}`),
 
     getAssessments: (
-      id: string
+      id: string,
     ): Promise<AxiosResponse<ApiResponse<Assessment[]>>> =>
       apiClient.get(`/classroom/${id}/assessment`),
 
     createAssessment: (
       id: string,
-      data: CreateAssessmentData
+      data: CreateAssessmentData,
     ): Promise<AxiosResponse<ApiResponse<Assessment>>> =>
       apiClient.post(`/classroom/${id}/assessment`, data),
   },
@@ -90,7 +92,7 @@ export const api = {
 
     update: (
       id: string,
-      data: UpdateAssessmentData
+      data: UpdateAssessmentData,
     ): Promise<AxiosResponse<ApiResponse<Assessment>>> =>
       apiClient.put(`/classroom-assessment/${id}`, data),
 
@@ -99,12 +101,12 @@ export const api = {
 
     publish: (
       id: string,
-      isPublished: boolean
+      isPublished: boolean,
     ): Promise<AxiosResponse<ApiResponse>> =>
       apiClient.post(`/classroom-assessment/${id}/publish`, { isPublished }),
 
     getResults: (
-      id: string
+      id: string,
     ): Promise<AxiosResponse<ApiResponse<Submission[]>>> =>
       apiClient.get(`/classroom-assessment/${id}/results`),
   },
@@ -115,7 +117,7 @@ export const api = {
 
     grade: (
       id: string,
-      grades: Grade[]
+      grades: Grade[],
     ): Promise<
       AxiosResponse<
         ApiResponse<{

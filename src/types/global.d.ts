@@ -47,21 +47,41 @@ interface Student {
   name: string;
   email: string;
   image?: string;
-  username: string;
+  username?: string;
+}
+
+interface StudentPerformance {
+  _id: string;
+  student: {
+    _id: string;
+    name: string;
+    email: string;
+    image?: string;
+    username?: string;
+  };
   enrolledAt: string;
   averageScore: number;
   completedAssessments: number;
 }
 
 interface Question {
+  _id?: string;
+  questionNumber: number;
   questionText: string;
-  questionType: "mcq" | "descriptive" | "numerical" | "coding";
+  questionType: "mcq" | "numerical";
   options?: string[];
   correctAnswer?: string | string[] | number;
   points?: number;
-  difficulty?: "easy" | "medium" | "hard";
   topic?: string;
   explanation?: string;
+  variantId?: string;
+  equationContent?: {
+    latex: string;
+    description: string;
+    position: "inline" | "display";
+  };
+  cognitiveLevel?: string;
+  bloomsLevel?: number;
 }
 
 interface Assessment {
@@ -72,15 +92,47 @@ interface Assessment {
   description?: string;
   curriculum: string;
   curriculumFile?: string;
+  enrichedCurriculumContent?: string;
   dueDate?: string;
+  duration: number;
   difficulty: "easy" | "medium" | "hard";
+  cognitiveLevel:
+    | "knowledge"
+    | "comprehension"
+    | "application"
+    | "analysis"
+    | "synthesis"
+    | "evaluation";
   totalQuestions: number;
-  averageScore: number;
-  completedCount: number;
+  questionConfig: {
+    mcq: number;
+    numerical: number;
+  };
+  questionVariants?: QuestionVariant[];
+  fairnessConfig: FairnessConfig;
+  includesEquations: boolean;
+  averageScore?: number;
+  completedCount?: number;
   skills?: string[];
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+interface QuestionVariant {
+  variantId: string;
+  conceptId: string;
+  topicArea: string;
+  parameters: Record<string, number | string>;
+  estimatedDifficulty: number;
+  semanticSimilarityScore: number;
+}
+
+interface FairnessConfig {
+  enableQuestionVariants: boolean;
+  minVariantsPerConcept: number;
+  maxDifficultyDeviation: number;
+  requirementPerStudent: "unique_variants" | "same_difficulty" | "both";
 }
 
 interface CreateClassroomData {
@@ -101,15 +153,24 @@ interface CreateAssessmentData {
   description?: string;
   curriculum: string;
   curriculumFile?: string;
+  duration: number;
   difficulty: "easy" | "medium" | "hard";
+  cognitiveLevel?:
+    | "knowledge"
+    | "comprehension"
+    | "application"
+    | "analysis"
+    | "synthesis"
+    | "evaluation";
   totalQuestions: number;
   questionConfig: {
     mcq: number;
-    descriptive: number;
     numerical: number;
   };
   skills?: string[];
   dueDate?: string;
+  includesEquations?: boolean;
+  fairnessConfig?: FairnessConfig;
 }
 
 interface UpdateAssessmentData {
@@ -118,10 +179,23 @@ interface UpdateAssessmentData {
   curriculum?: string;
   curriculumFile?: string;
   dueDate?: string;
+  duration?: number;
   difficulty?: "easy" | "medium" | "hard";
+  cognitiveLevel?:
+    | "knowledge"
+    | "comprehension"
+    | "application"
+    | "analysis"
+    | "synthesis"
+    | "evaluation";
   totalQuestions?: number;
+  questionConfig?: {
+    mcq: number;
+    numerical: number;
+  };
   skills?: string[];
   isPublished?: boolean;
+  includesEquations?: boolean;
 }
 
 interface Grade {
@@ -135,11 +209,18 @@ interface Submission {
   assessmentId: string;
   studentId: string;
   classroomId: string;
-  answers: any[];
+  questions: Question[];
+  answers: Array<{
+    questionNumber: number;
+    answer: string | number;
+    isCorrect?: boolean;
+  }>;
   score: number;
   totalPoints: number;
   percentage: number;
-  status: "submitted" | "graded" | "pending_review";
-  submittedAt: string;
+  status: "in_progress" | "submitted" | "evaluated";
+  startedAt: string;
+  submittedAt?: string;
   gradedAt?: string;
+  variantIndices?: number[];
 }
