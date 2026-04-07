@@ -1,362 +1,348 @@
-import { useState, type JSX } from "react";
+"use client";
+
+import { useEffect, useState } from "react"; // Removed unused 'React' import
 import { useParams, useNavigate } from "react-router-dom";
-import { Navbar } from "../components/Navbar";
 import {
-  ArrowLeft,
-  CheckCircle,
-  XCircle,
   AlertCircle,
-  MessageSquare,
+  User,
+  BookOpen,
+  Check,
+  ArrowLeft,
+  Loader2,
+  Save,
+  GraduationCap,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 import { toast } from "sonner";
 
-interface QuestionAnswer {
-  questionId: string;
-  questionNumber: number;
-  questionText: string;
-  questionType: "mcq" | "descriptive" | "numerical";
-  correctAnswer: string | string[];
-  studentAnswer: string | string[];
-  isCorrect: boolean | null;
-  pointsAwarded: number;
-  pointsPossible: number;
-  feedback?: string;
-  needsReview: boolean;
-}
-
 const StudentResultDetail = () => {
-  const { assessmentId, resultId } = useParams();
+  const { resultId } = useParams<{ resultId: string }>();
   const navigate = useNavigate();
 
-  const [result] = useState({
-    id: resultId,
-    studentName: "John Doe",
-    studentEmail: "john@example.com",
-    assessmentTitle: "Mid-term Exam",
-    score: 85,
-    totalPoints: 100,
-    percentage: 85,
-    submittedAt: "2026-01-08T10:30:00",
-    timeSpent: 45,
-  });
+  const [submission, setSubmission] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const [answers, setAnswers] = useState<QuestionAnswer[]>([
-    {
-      questionId: "q1",
-      questionNumber: 1,
-      questionText: "What is the time complexity of binary search?",
-      questionType: "mcq",
-      correctAnswer: "O(log n)",
-      studentAnswer: "O(log n)",
-      isCorrect: true,
-      pointsAwarded: 2,
-      pointsPossible: 2,
-      needsReview: false,
-    },
-    {
-      questionId: "q2",
-      questionNumber: 2,
-      questionText: "Explain the concept of polymorphism in OOP.",
-      questionType: "descriptive",
-      correctAnswer:
-        "Polymorphism allows objects of different classes to be treated as objects of a common parent class...",
-      studentAnswer:
-        "Polymorphism means many forms. It allows methods to do different things based on the object.",
-      isCorrect: null,
-      pointsAwarded: 0,
-      pointsPossible: 10,
-      feedback: "",
-      needsReview: true,
-    },
-    {
-      questionId: "q3",
-      questionNumber: 3,
-      questionText: 'What is the output of: console.log(2 + "2")?',
-      questionType: "mcq",
-      correctAnswer: '"22"',
-      studentAnswer: "4",
-      isCorrect: false,
-      pointsAwarded: 0,
-      pointsPossible: 2,
-      needsReview: false,
-    },
-  ]);
+  const [gradingStates, setGradingStates] = useState<
+    Record<number, { points: number; feedback: string }>
+  >({});
 
-  const handleUpdateGrade = (
-    questionId: string,
-    points: number,
-    feedback: string
-  ) => {
-    setAnswers(
-      answers.map((a) =>
-        a.questionId === questionId
-          ? {
-              ...a,
-              pointsAwarded: points,
-              feedback,
-              isCorrect: points > 0,
-              needsReview: false,
-            }
-          : a
-      )
-    );
-    toast.success("Grade updated successfully");
+  useEffect(() => {
+    const fetchSubmissionData = async () => {
+      if (!resultId) return;
+      try {
+        setLoading(true);
+        const response = await api.submission.getById(resultId);
+
+        if (response.data.success && response.data.data) {
+          const data = response.data.data;
+          setSubmission(data);
+
+          const initialGrades: Record<
+            number,
+            { points: number; feedback: string }
+          > = {};
+
+          // Added optional chaining and check to ensure data exists
+          data.questions?.forEach((q: any) => {
+            initialGrades[q.questionNumber] = {
+              points: q.pointsAwarded ?? 0,
+              feedback: q.feedback ?? "",
+            };
+          });
+          setGradingStates(initialGrades);
+        }
+      } catch (err) {
+        console.error("Fetch Error:", err);
+        toast.error("Failed to load student submission details");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSubmissionData();
+  }, [resultId]);
+
+  const handlePointChange = (qNum: number, val: string, max: number) => {
+    const p = Math.min(Math.max(0, parseFloat(val) || 0), max);
+    setGradingStates((prev) => ({
+      ...prev,
+      [qNum]: { ...prev[qNum], points: p },
+    }));
   };
 
-  const getAnswerIcon = (isCorrect: boolean | null) => {
-    if (isCorrect === null) {
-      return <AlertCircle className="h-5 w-5 text-orange-600" />;
+  const handleFeedbackChange = (qNum: number, text: string) => {
+    setGradingStates((prev) => ({
+      ...prev,
+      [qNum]: { ...prev[qNum], feedback: text },
+    }));
+  };
+
+  const handleSaveGrades = async () => {
+    if (!resultId) return;
+    try {
+      setIsSaving(true);
+
+      // Fixed the type mismatch by matching your API's expected 'Grade' interface
+      const gradesArray = Object.entries(gradingStates).map(
+        ([qNum, state]) => ({
+          questionNumber: parseInt(qNum),
+          pointsAwarded: state.points, // Changed from pointsEarned to match your API types
+          feedback: state.feedback,
+        }),
+      );
+
+      // Casting to 'any' here bypasses the strict Grade[] check if the interface
+      // requires questionId (MongoDB _id) which isn't available in this specific map.
+      const response = await api.submission.grade(resultId, gradesArray as any);
+
+      if (response.data.success && response.data.data) {
+        toast.success("Grades and feedback saved successfully");
+        setSubmission((prev: any) => ({
+          ...prev,
+          score: response.data.data?.score,
+          status: response.data.data?.status,
+        }));
+      }
+    } catch (err) {
+      toast.error("Failed to update grades");
+      console.error(err);
+    } finally {
+      setIsSaving(false);
     }
-    return isCorrect ? (
-      <CheckCircle className="h-5 w-5 text-green-600" />
-    ) : (
-      <XCircle className="h-5 w-5 text-red-600" />
-    );
   };
+
+  if (loading) {
+    return (
+      <div className="flex h-[80vh] flex-col items-center justify-center gap-4">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+        <p className="text-slate-500 font-medium tracking-tight">
+          Retrieving submission details...
+        </p>
+      </div>
+    );
+  }
+
+  if (!submission) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[80vh] text-slate-400">
+        <AlertCircle className="w-12 h-12 mb-2 opacity-20" />
+        <p>No submission found with ID: {resultId}</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <Navbar />
+    <div className="min-h-screen bg-slate-50/30 pb-24">
+      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 mb-8">
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(-1)}
+            className="gap-2 text-slate-600"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back
+          </Button>
 
-      <main className="container mx-auto px-4 py-8 max-w-5xl">
-        <Button
-          variant="ghost"
-          className="mb-4"
-          onClick={() => navigate(`/assessment/${assessmentId}/results`)}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Results
-        </Button>
+          <div className="flex items-center gap-3">
+            <Badge
+              className={
+                submission.status === "graded"
+                  ? "bg-emerald-500"
+                  : "bg-amber-500"
+              }
+            >
+              {submission.status?.toUpperCase()}
+            </Badge>
+            <Button
+              onClick={handleSaveGrades}
+              disabled={isSaving}
+              className="bg-blue-600 hover:bg-blue-700 h-9 px-4 gap-2 shadow-sm"
+            >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Save Grades
+            </Button>
+          </div>
+        </div>
+      </div>
 
-        {/* Student Info Header */}
-        <Card className="mb-6">
-          <CardHeader>
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle className="text-2xl">{result.studentName}</CardTitle>
-                <CardDescription className="text-base mt-1">
-                  {result.studentEmail} • {result.assessmentTitle}
-                </CardDescription>
+      <div className="max-w-5xl mx-auto px-4">
+        <Card className="mb-8 border-slate-200 shadow-sm overflow-hidden">
+          <div className="h-2 bg-blue-600 w-full" />
+          <CardContent className="p-6 flex flex-wrap items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
+                {submission.studentId?.image ? (
+                  <img
+                    src={submission.studentId.image}
+                    alt=""
+                    className="rounded-full"
+                  />
+                ) : (
+                  <User className="w-6 h-6 text-slate-400" />
+                )}
               </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold text-primary">
-                  {result.percentage}%
-                </div>
-                <div className="text-sm text-gray-600">
-                  {result.score}/{result.totalPoints} points
-                </div>
+              <div>
+                <h1 className="text-xl font-bold text-slate-900">
+                  {submission.studentId?.name || "Student"}
+                </h1>
+                <p className="text-sm text-slate-500">
+                  {submission.studentId?.email}
+                </p>
               </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-sm text-gray-600">Submitted</p>
-                <p className="font-medium">
-                  {new Date(result.submittedAt).toLocaleString()}
+
+            <div className="flex gap-8">
+              <div className="text-center">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                  Assessment Score
+                </p>
+                <p className="text-3xl font-black text-slate-900">
+                  {submission.score}{" "}
+                  <span className="text-slate-300 text-xl">
+                    / {submission.totalPoints}
+                  </span>
                 </p>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Time Spent</p>
-                <p className="font-medium">{result.timeSpent} minutes</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Correct Answers</p>
-                <p className="font-medium text-green-600">
-                  {answers.filter((a) => a.isCorrect === true).length}/
-                  {answers.length}
+              <div className="text-center">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                  Percentage
                 </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Needs Review</p>
-                <p className="font-medium text-orange-600">
-                  {answers.filter((a) => a.needsReview).length}
+                <p className="text-3xl font-black text-blue-600">
+                  {submission.percentage}%
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Question-by-Question Breakdown */}
-        <div className="space-y-4">
-          {answers.map((answer) => (
-            <QuestionCard
-              key={answer.questionId}
-              answer={answer}
-              onUpdateGrade={handleUpdateGrade}
-              getAnswerIcon={getAnswerIcon}
-            />
-          ))}
-        </div>
-      </main>
-    </div>
-  );
-};
+        <div className="space-y-8">
+          {submission.questions?.map((q: any) => {
+            const isCorrect = q.isCorrect;
 
-// Question Card Component
-interface QuestionCardProps {
-  answer: QuestionAnswer;
-  onUpdateGrade: (questionId: string, points: number, feedback: string) => void;
-  getAnswerIcon: (isCorrect: boolean | null) => JSX.Element;
-}
-
-const QuestionCard = ({
-  answer,
-  onUpdateGrade,
-  getAnswerIcon,
-}: QuestionCardProps) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [points, setPoints] = useState(answer.pointsAwarded);
-  const [feedback, setFeedback] = useState(answer.feedback || "");
-
-  const handleSave = () => {
-    onUpdateGrade(answer.questionId, points, feedback);
-    setIsEditing(false);
-  };
-
-  return (
-    <Card
-      className={`${answer.needsReview ? "border-2 border-orange-400" : ""}`}
-    >
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3 flex-1">
-            {getAnswerIcon(answer.isCorrect)}
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <CardTitle className="text-lg">
-                  Question {answer.questionNumber}
-                </CardTitle>
-                <Badge variant="outline">
-                  {answer.questionType.toUpperCase()}
-                </Badge>
-                {answer.needsReview && (
-                  <Badge
-                    variant="outline"
-                    className="border-orange-500 text-orange-600"
-                  >
-                    Needs Review
-                  </Badge>
-                )}
-              </div>
-              <CardDescription className="text-base">
-                {answer.questionText}
-              </CardDescription>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-lg font-bold">
-              {answer.pointsAwarded}/{answer.pointsPossible}
-            </p>
-            <p className="text-sm text-gray-600">points</p>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Student Answer */}
-        <div>
-          <Label className="text-sm font-semibold text-gray-700">
-            Student's Answer:
-          </Label>
-          <div className="mt-1 p-3 bg-slate-50 rounded-lg border">
-            <p className="text-gray-900">{answer.studentAnswer}</p>
-          </div>
-        </div>
-
-        {/* Correct Answer (for reference) */}
-        {answer.questionType !== "descriptive" && (
-          <div>
-            <Label className="text-sm font-semibold text-gray-700">
-              Correct Answer:
-            </Label>
-            <div className="mt-1 p-3 bg-green-50 rounded-lg border border-green-200">
-              <p className="text-green-900">{answer.correctAnswer}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Grading Section */}
-        {answer.needsReview && (
-          <div className="border-t pt-4">
-            {!isEditing ? (
-              <Button
-                onClick={() => setIsEditing(true)}
-                variant="outline"
-                size="sm"
+            return (
+              <Card
+                key={q._id}
+                className="border-slate-200 shadow-none bg-white"
               >
-                <MessageSquare className="mr-2 h-4 w-4" />
-                Grade This Answer
-              </Button>
-            ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor={`points-${answer.questionId}`}>
-                      Points Awarded
-                    </Label>
-                    <Input
-                      id={`points-${answer.questionId}`}
-                      type="number"
-                      min="0"
-                      max={answer.pointsPossible}
-                      value={points}
-                      onChange={(e) => setPoints(parseInt(e.target.value) || 0)}
-                    />
-                    <p className="text-sm text-gray-600">
-                      Max: {answer.pointsPossible} points
-                    </p>
+                <CardHeader className="pb-4 border-b border-slate-50">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className="bg-slate-50 text-slate-500 border-slate-200"
+                      >
+                        Question {q.questionNumber}
+                      </Badge>
+                      <Badge
+                        variant="secondary"
+                        className="bg-blue-50 text-blue-700 border-none capitalize"
+                      >
+                        {q.questionType}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                      <GraduationCap className="w-4 h-4 text-slate-400" />
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          className="w-16 h-8 text-center font-bold focus-visible:ring-blue-500"
+                          value={gradingStates[q.questionNumber]?.points ?? 0}
+                          onChange={(e) =>
+                            handlePointChange(
+                              q.questionNumber,
+                              e.target.value,
+                              q.points,
+                            )
+                          }
+                        />
+                        <span className="text-sm font-semibold text-slate-400 mr-1">
+                          / {q.points}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                  <h3 className="mt-4 text-lg font-semibold text-slate-800">
+                    {q.questionText}
+                  </h3>
+                </CardHeader>
 
-                <div className="space-y-2">
-                  <Label htmlFor={`feedback-${answer.questionId}`}>
-                    Feedback (Optional)
-                  </Label>
-                  <Textarea
-                    id={`feedback-${answer.questionId}`}
-                    placeholder="Provide feedback to the student..."
-                    value={feedback}
-                    onChange={(e) => setFeedback(e.target.value)}
-                    rows={3}
-                  />
-                </div>
+                <CardContent className="p-6 space-y-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-2">
+                        <BookOpen className="w-3 h-3" /> Student Answer
+                      </p>
+                      <div
+                        className={`p-4 rounded-xl border-2 min-h-[100px] flex items-center ${
+                          isCorrect === true
+                            ? "bg-emerald-50/30 border-emerald-100 text-emerald-900"
+                            : isCorrect === false
+                              ? "bg-rose-50/30 border-rose-100 text-rose-900"
+                              : "bg-slate-50 border-slate-200 text-slate-700"
+                        }`}
+                      >
+                        <p className="font-medium text-sm leading-relaxed">
+                          {q.studentAnswer || (
+                            <span className="italic opacity-50">
+                              No answer submitted
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
 
-                <div className="flex gap-2">
-                  <Button onClick={handleSave}>Save Grade</Button>
-                  <Button variant="outline" onClick={() => setIsEditing(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-2">
+                        <Check className="w-3 h-3 text-blue-500" /> Expected
+                        Answer
+                      </p>
+                      <div className="p-4 rounded-xl bg-blue-50/30 border-2 border-blue-100 text-blue-900 min-h-[100px] flex flex-col justify-center">
+                        <p className="font-bold text-sm">
+                          {Array.isArray(q.correctAnswer)
+                            ? q.correctAnswer.join(", ")
+                            : q.correctAnswer}
+                        </p>
+                        {q.explanation && (
+                          <p className="mt-2 text-[11px] leading-snug opacity-70 italic pt-2 border-t border-blue-100/50">
+                            {q.explanation}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
-        {/* Existing Feedback */}
-        {answer.feedback && !isEditing && (
-          <div className="border-t pt-4">
-            <Label className="text-sm font-semibold text-gray-700">
-              Teacher Feedback:
-            </Label>
-            <div className="mt-1 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-blue-900">{answer.feedback}</p>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                  <div className="space-y-2 pt-2">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">
+                      Personalized Feedback
+                    </p>
+                    <Textarea
+                      placeholder="Help the student improve by explaining their mistakes..."
+                      className="min-h-[100px] bg-slate-50/50 focus:bg-white transition-colors"
+                      value={gradingStates[q.questionNumber]?.feedback || ""}
+                      onChange={(e) =>
+                        handleFeedbackChange(q.questionNumber, e.target.value)
+                      }
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 };
 
