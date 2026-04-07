@@ -1,7 +1,3 @@
-I have updated the README to adopt a clean, professional, and technical tone suitable for a repository documentation page. All emojis have been removed to ensure the documentation remains objective and professional.
-
------
-
 ## Mocknetic Teacher Portal
 
 This repository contains the Teacher Portal for Mocknetic, an AI-powered technical interview preparation and classroom assessment platform. This interface enables educators to create assessments, audit student performance, and perform manual grading on AI-evaluated submissions.
